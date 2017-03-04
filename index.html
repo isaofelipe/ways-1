@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html>
+	<head>
+
+		<!-- Leaflet links -->
+		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.2/dist/leaflet.css" />
+		<script src="https://unpkg.com/leaflet@1.0.2/dist/leaflet.js"></script>
+		<script src="leaflet.polylineDecorator.js"></script> <!--Adiciona sentido à rota-->
+
+		<!-- Bootstrap links -->
+		<meta charset="utf-8">
+		<link rel="stylesheet" href="normalize.css">
+		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css" integrity="sha384-rwoIResjU2yc3z8GV/NPeZWAv56rSmLldC3R/AZzGRnGxQQKnKkoFVhFQhNUwEyJ" crossorigin="anonymous">
+		<link rel="stylesheet" href="font-awesome/css/font-awesome.css">
+		<link rel="stylesheet" href="estilo.css">
+
+	</head>
+	<body>
+
+		<div id="loader"></div>
+
+		<div id="container">
+			<div id="mapid"></div>	
+		</div>
+
+		
+
+			
+			<input type="checkbox" id="botao-check">
+			<label id="label-botao" for="botao-check" class="botao-menu"><i class="fa fa-bars" aria-hidden="true"></i>
+			</label>
+
+		<div class="caixa">
+			<div id="dados" class="container">
+				<p>Selecione um Ponto: </p>
+				<select id='selectPonto' class="form-control form-control-md"></select>
+				<button class="btn btn-secondary sidebar-btn" onClick='selecionaPonto()'>Selecionar</button>
+				<p>Linhas que passar por aqui:</p>
+				<select id='selectLinha' class="form-control form-control-md"></select> </p>
+				<button onClick='mostraLinha()' class="btn btn-secondary">Mostrar Linha</button>
+				<p>Toque em algum lugar do mapa para ver os pontos proximos</p>
+				<select id='selectPontoProximo' class="form-control formcontrol-lg"></select> </p>
+				<button onClick='selecionaPontoProximo()' class="btn btn-secondary">Selecionar Ponto</button>
+				<p>Linhas que passam nesse ponto:</p>
+				<select id='selectLinhaProximo' class="form-control formcontrol-lg"></select> </p>
+				<button onClick='mostraLinhaProximo()' class="btn btn-secondary">Mostrar Linha</button></p>
+				<button onClick='limpaRotaLite()' class="btn btn-danger">Limpar</button>
+			</div>
+		</div>
+
+
+		<script>
+
+			var mymap = L.map('mapid').setView([-20.2981, -40.3121], 12);
+
+			L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+				attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors',
+				maxZoom: 18
+			}).addTo(mymap);
+
+			var URL = 'https://dl.dropboxusercontent.com/s/0dcujbqyh1dpkfq/geoLinhasEPontos2.json?dl=0'; //dados geoJSON
+
+			var fetched = false;
+
+			//FETCH
+			async function foo(){
+				var data = await fetch(URL); // notice the await
+				console.log("fetched");// code here only executes _after_ the request is done
+				fetched = true;
+				return data.json(); // data is defined
+			}
+
+			var geoJPromise = foo();
+
+			//Listar pontos
+			geoJPromise.then(function(response){
+				var todosPontos = response.listaDePontos;
+
+				var select = document.getElementById('selectPonto');
+				for (var i = 0; i < todosPontos.features.length; i++){
+					var opt = document.createElement('option');
+					opt.value = todosPontos.features[i].properties.linhas;
+					opt.innerHTML = todosPontos.features[i].properties.numeroDoPonto + ' - ' + todosPontos.features[i].properties.rua + ', ' + todosPontos.features[i].properties.referencia;
+					select.appendChild(opt);
+				}
+
+			})
+
+			var markers = [];
+            var polyline;
+
+			//Mostra linhas na lista e no mapa de acordo com ponto selecionado
+			function selecionaPonto(){
+
+				limpaRota();
+
+				var pontoEscolhido = (document.getElementById('selectPonto').value).split(','); //vetor de linhas que passam pelo ponto
+				console.log(pontoEscolhido);
+				var posPontoEscolhido = document.getElementById('selectPonto').selectedIndex; //posição do ponto escolhido na lista de pontos
+				console.log(document.getElementById('selectPonto').selectedIndex);
+
+				var select = document.getElementById('selectLinha'); //vetor de linhas que passam pelo ponto
+
+				//limpar lista
+				while (select.options.length > 0) {
+					select.remove(0);
+				}
+
+				//preencher lista de linhas
+				for (var i = 0; i < pontoEscolhido.length; i++){
+					var opt = document.createElement('option');
+					opt.value = pontoEscolhido[i];
+					opt.innerHTML = pontoEscolhido[i];
+					select.appendChild(opt);
+				}
+
+				//Mostra ponto escolhido no mapa
+				geoJPromise.then(function(response){
+					var todosPontos = response.listaDePontos;
+						var layer = L.geoJSON(todosPontos.features[posPontoEscolhido]).addTo(mymap);
+						markers.push(layer);
+				})
+			}
+
+			//Mostra no mapa os pontos da linha escolhida
+			function mostraLinha(){
+
+				limpaRota();
+
+				var linhaEscolhida = (document.getElementById('selectLinha').value).toString();
+				console.log(linhaEscolhida);
+
+				geoJPromise.then(function(response){
+					var todasLinhas = response.linhasDeOnibus;
+					var layer = L.geoJSON(todasLinhas[linhaEscolhida]).addTo(mymap);
+					markers.push(layer);
+				})
+			}
+
+			//Limpa pontos da linha zerando markers
+			function limpaRota(){
+				for (var i = 0; i < markers.length; i++){
+					mymap.removeLayer(markers[i]);
+				}
+				markers = [];
+			}
+
+			//Limpa pontos da linha sem zerar vetor markers
+			function limpaRotaLite(){
+				for (var i = 0; i < markers.length; i++){
+					mymap.removeLayer(markers[i]);
+				}
+
+				limpaRotaOnClick();
+			}
+
+			//Limpa as outras layers
+			function limpaRotaOnClick(){
+
+				if (polyline){
+                    mymap.removeLayer(polyline);
+                }
+
+				if(circle){
+					mymap.removeLayer(circle);
+				}
+
+				if(arrows){
+					mymap.removeLayer(arrows);
+				}
+			}
+
+			//Troca tela de carregamento para o programa
+			function init(){
+				console.log("loaded");
+				document.getElementById("loader").style.display = "none";
+				document.getElementById("mapid").style.visibility = "visible";
+				document.getElementById("dados").style.visibility = "visible";
+				document.getElementById("label-botao").style.visibility = "visible";
+			}
+			var readyStateCheckInterval = setInterval(function() {
+				if (document.readyState === "complete" && fetched) {
+					clearInterval(readyStateCheckInterval);
+					init();
+				}
+			}, 10);
+
+			//Variáveis
+			//var popup = L.popup();
+			var circle;
+			var radius = 200; //Raio de distancia ao ponto clicado
+			var arrows;
+
+			//Evento de clique no mapa: Mostra coordenadas e pontos próximos
+			function onMapClick(e) {
+
+				//exibe coordenadas
+				/*popup
+					.setLatLng(e.latlng)
+					.setContent("Coordenadas: " + e.latlng.toString())
+					.openOn(mymap);*/
+
+				limpaRota();
+				limpaRotaOnClick();
+
+				//Cria circulo
+				circle = L.circle(e.latlng, {
+						color: 'red',
+						fillColor: '#f03',
+						fillOpacity: 0.5,
+						radius: radius
+				}).addTo(mymap);
+
+				//Exibe pontos dentro do raio do ponto clicado
+				geoJPromise.then(function(response){
+					var todosPontos = response.listaDePontos;
+					var center = e.latlng;
+					var pontosOnRadius = [];
+
+					for (var i = 0; i < todosPontos.features.length; i++){
+						var point = coordsToLatLng(todosPontos.features[i].geometry.coordinates);
+						var distance = center.distanceTo(point);
+						if(distance <= radius){
+							todosPontos.features[i].properties.distance = distance;
+							todosPontos.features[i].properties.index = i;
+							pontosOnRadius.push(todosPontos.features[i]);
+						}
+					}
+
+					pontosOnRadius.sort(function(p1, p2){return p1.properties.distance - p2.properties.distance}); //ordena pontosde acordo com a distancia (ascendente)
+
+                    //Limpa listas
+					var select = document.getElementById('selectPontoProximo');
+					while (select.options.length > 0) {
+						select.remove(0);
+					}
+					var select2 = document.getElementById('selectLinhaProximo');
+					while (select2.options.length > 0) {
+					select2.remove(0);
+					}
+
+                    //console.log(pontosOnRadius);
+
+					//Define o Icone
+					var busIcon = L.icon({
+						iconUrl: 'bus.png',
+
+						iconSize:     [30, 45], // size of the icon
+						iconAnchor:   [15, 43], // point of the icon which will correspond to marker's location
+						//popupAnchor:  [-3, -76] // point from which the popup should open relative to the iconAnchor
+					});
+
+                    //Preenche lista de pontos e adiciona ao mapa
+					for (var i = 0; i < pontosOnRadius.length; i++){
+
+                        var layer = L.geoJSON(pontosOnRadius[i], {
+																			pointToLayer: function (feature, latlng) {
+																				return L.marker(latlng, {icon: busIcon});
+																				}
+																		}).addTo(mymap);
+						markers.push(layer);
+						var opt = document.createElement('option');
+						opt.value = pontosOnRadius[i].properties.linhas;
+						//console.log(opt.value);
+						opt.innerHTML = pontosOnRadius[i].properties.numeroDoPonto + ' - ' + pontosOnRadius[i].properties.rua + ', ' + pontosOnRadius[i].properties.referencia;
+						select.appendChild(opt);
+				}
+				})
+			}
+
+			//Chamada da funçao onMapClick
+			mymap.on('click', onMapClick);
+
+			//transforma coordenadas do ponto do banco de dados em um vetor
+			function coordsToLatLng(c){
+				return [c[1], c[0]];
+			}
+
+			//Mostra linhas na lista do ponto escolhido
+			function selecionaPontoProximo(){
+
+				limpaRotaLite();//remove pontos do mapa
+
+				var pontoEscolhido = (document.getElementById('selectPontoProximo').value).split(','); //linhas do ponto escolhido
+				var posPontoEscolhido = document.getElementById('selectPontoProximo').selectedIndex; //posição na lista do ponto escolhido
+
+				var select = document.getElementById('selectLinhaProximo');
+
+                //Limpa lista
+				while (select.options.length > 0) {
+					select.remove(0);
+				}
+
+                //Preenche lista e adiciona ponto escolhido no mapa
+				for (var i = 0; i < pontoEscolhido.length; i++){
+					var opt = document.createElement('option');
+					opt.value = pontoEscolhido[i];
+					opt.innerHTML = pontoEscolhido[i];
+					select.appendChild(opt);
+				}
+				markers[posPontoEscolhido].addTo(mymap);
+			}
+
+			var pointMarkerOptions = {
+				radius: 6,
+				fillColor: "#ff7800",
+				color: "#000",
+				weight: 1,
+				opacity: 1,
+				fillOpacity: 0.8
+			};
+
+
+
+			//Mostra pontos da linha escolhida
+			function mostraLinhaProximo(){
+
+				var rotaLinha = [];
+				limpaRotaLite();
+                mymap.removeLayer(circle);
+
+				var linhaEscolhida = (document.getElementById('selectLinhaProximo').value).toString();
+				//console.log(linhaEscolhida);
+
+				geoJPromise.then(function(response){
+					var todasLinhas = response.linhasDeOnibus;
+					var layer = L.geoJSON(todasLinhas[linhaEscolhida], {
+									pointToLayer: function (feature, latlng) {
+										return L.circleMarker(latlng, pointMarkerOptions);
+									}
+								}).addTo(mymap);
+
+					markers.push(layer);
+
+
+					for(var i = 0; i < todasLinhas[linhaEscolhida].features.length; i++){
+						var tempLatLong = coordsToLatLng(todasLinhas[linhaEscolhida].features[i].geometry.coordinates);
+						rotaLinha.push(tempLatLong);
+					}
+
+					polyline = L.polyline(rotaLinha, {color: 'red', weight: 2.5, dashArray: [3, 5]}).addTo(mymap);
+
+                    //Adiciona setas de sentido à rota
+                    /*var rotaDecorator=[];
+                    var aux=[];
+                    for (var i=0; i<rotaLinha.length; i++){
+                        for (j=0; j<2; j++){
+                            aux.push(parseFloat(rotaLinha[i][j]));
+                        }
+                            rotaDecorator.push(aux);
+                            aux=[];
+                    }*/
+                    arrows = L.polylineDecorator(polyline, {patterns: [
+            			{offset: 25, repeat: 70, symbol: L.Symbol.arrowHead({pixelSize: 10, pathOptions: {fillOpacity: 1, weight: 0, color:"blue"}})}]
+    					}).addTo(mymap);
+
+
+				})
+
+			}
+
+		</script>
+
+
+		<!-- Javascript JQuery links -->
+			<script src="https://code.jquery.com/jquery-3.1.1.slim.min.js" integrity="sha384-A7FZj7v+d/sdmMqp/nOQwliLvUsJfDHW+k9Omg/a/EheAdgtzNs3hpfag6Ed950n" crossorigin="anonymous"></script>
+			<script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.4.0/js/tether.min.js" integrity="sha384-DztdAPBWPRXSA/3eYEEUWrWCy7G5KFbe8fFjk5JAIxUYHKkDx6Qin1DkWx51bBrb" crossorigin="anonymous"></script>
+			<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/js/bootstrap.min.js" integrity="sha384-vBWWzlZJ8ea9aCX4pEW3rVHjgjt7zpkNpZk+02D9phzyeVkE+jo0ieGizqPLForn" crossorigin="anonymous"></script>
+	</body>
+</html>
