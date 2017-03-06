@@ -1,0 +1,95 @@
+body{
+    width: 100%;
+    height: 100%;
+    background-color: #fff;
+}
+
+#loader{
+    height: 80px;
+    width: 80px;
+    border: 2px solid #fff;
+    border-top: 3px solid #0055ff;
+    border-radius: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: auto;
+    animation: spin 1s infinite linear;
+    display: block;
+}
+@keyframes spin{
+    from{
+        transform: rotate(0deg);
+    }to{
+        transform: rotate(360deg);
+    }
+}
+#dados{
+    width: 400px;;
+    visibility: hidden;
+    margin-top: 10px;
+}
+#container{
+    width: 100%;
+    height: 100vh;
+    position: relative;
+    z-index: 0;
+}
+#mapid{
+    height: 100%;
+    width: 100%;
+    visibility: hidden;
+}
+.caixa{
+    width: 400px;;
+    height: 100vh;
+    background-color: rgba(30, 144, 255, .7);
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform: translateX(-400px);
+    transition: all 0.3s;
+    overflow: auto;
+    text-align: center;
+    box-shadow: 5px 5px 5px grey;
+}
+.botao-menu{
+    color: #202020;
+    background: rgb(30, 144, 255);
+    padding: 10px;
+    font-size: 30px;
+    width: 50px;
+    display: flex;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: absolute;
+    top: 40%;
+    visibility: hidden;
+    border-radius: 0 10px 10px 0;
+    box-shadow: 5px 5px 5px grey;
+    z-index: 10;
+}
+#botao-check{
+    display: none;
+}
+#botao-check:checked ~ div.caixa{
+    transform: translateX(0px);
+}
+#botao-check:checked ~ .botao-menu{
+    transform: translateX(400px);
+    background-color: rgba(30, 144, 255, .7);
+}
+.btn{
+    cursor: pointer;
+}
+.sidebar-btn{
+    position: relative;
+}
+.caixa p{
+    color: #fff;
+    padding-left: 10px;
+    text-align: center;
+}
