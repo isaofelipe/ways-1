@@ -5,7 +5,7 @@
 		<!-- Leaflet links -->
 		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.2/dist/leaflet.css" />
 		<script src="https://unpkg.com/leaflet@1.0.2/dist/leaflet.js"></script>
-		<script src="leaflet.polylineDecorator.js"></script> <!--Adiciona sentido à rota-->
+		<script src="Leaflet.PolylineDecorator.js"></script> <!--Adiciona sentido à rota-->
 
 		<!-- Bootstrap links -->
 		<meta charset="utf-8">
@@ -64,8 +64,7 @@
 				maxZoom: 18
 			}).addTo(mymap);
 
-			var URL = 'https://dl.dropboxusercontent.com/s/0dcujbqyh1dpkfq/geoLinhasEPontos2.json?dl=0'; //dados geoJSON
-						
+			var URL = 'https://dl.dropboxusercontent.com/s/w4nstbivtiax0gm/DadosTeste.json?dl=0'; //dados geoJSON	
 
 			var fetched = false;
 
@@ -99,6 +98,7 @@
             var polyline;
 			var pontosOnRadius = [];
 			var limite = [];
+			var linhasRota = [];
 
 			//Mostra linhas na lista e no mapa de acordo com ponto selecionado
 			function selecionaPonto(){
@@ -214,6 +214,7 @@
 			var circle2;
 			var radius = 200; //Raio de distancia ao ponto clicado
 			var arrows;
+			var centroPartida;
 
 			//Evento de clique no mapa: Mostra coordenadas e pontos próximos
 			function onMapClick(e) {
@@ -225,8 +226,11 @@
 					.openOn(mymap);*/
 
 				if (switchChegada==1 || (switchChegada==0 && switchPartida==0)){
+					centroPartida = e.latlng;
 					limpaRota();
 					limpaRotaOnClick();
+					linhasNaPartida = [];
+					linhasNaChegada = [];
 
 					//Cria circulo
 					circle = L.circle(e.latlng, {
@@ -304,6 +308,8 @@
 					for (var i = 0; i < markers2.length; i++){
 						mymap.removeLayer(markers2[i]);
 				}
+
+				linhasNaChegada = [];
 					
 				//Cria circulo
 				circle2 = L.circle(e.latlng, {
@@ -318,10 +324,10 @@
 				geoJPromise.then(function(response){
 					var todosPontos = response.listaDePontos;
 					var center = e.latlng; 
-					//var pontosOnRadius = [];--------------------------------------------------
-					pontosOnRadius = []; //-----------------------------------------------------
+					var todasLinhas = response.linhasDeOnibus;
+					pontosOnRadius = [];
 
-					for (var i = 0; i < todosPontos.features.length; i++){					
+					for (var i = 0; i < todosPontos.features.length; i++){
 						var point = coordsToLatLng(todosPontos.features[i].geometry.coordinates);
 						var distance = center.distanceTo(point);
 						if(distance <= radius){
@@ -339,7 +345,7 @@
 						select.remove(0);
 					}
 					var select2 = document.getElementById('selectLinhaProximo');		
-					while (select2.options.length > 0) {                
+					while (select2.options.length > 0) {            
 					select2.remove(0);
 					}
 
@@ -368,7 +374,34 @@
 						opt.innerHTML = pontosOnRadius[i].properties.numeroDoPonto + ' - ' + pontosOnRadius[i].properties.rua + ', ' + pontosOnRadius[i].properties.referencia;
 						select.appendChild(opt);
 				}
-				console.log(pontosOnRadius); //----------------------------------------------
+				
+				//Armazena linhas no circulo no vetor
+				linhasRota = [];
+				for (var key in todasLinhas){
+					for (var j=0; j<todasLinhas[key].features.length; j++){
+						var point = coordsToLatLng(todasLinhas[key].features[j].geometry.coordinates);
+						var distancePartida = centroPartida.distanceTo(point);
+						if (distancePartida <= radius){
+							console.log(key);
+							for (var k=j+1; k<todasLinhas[key].features.length; k++){
+								point = coordsToLatLng(todasLinhas[key].features[k].geometry.coordinates)
+								var distanceChegada = center.distanceTo(point);
+								if (distanceChegada <= radius){
+									var jaContem = 0;
+									for (var n=0; n<linhasRota.length; n++){
+										if (linhasRota[n] == key){
+											jaContem = 1;
+										}
+									}
+										if (jaContem == 0){
+										linhasRota.push(key);}
+								}
+							}
+
+						}
+					}
+				}//---------------------------------------------------------------------------------------
+
 				})
 
 				limite[1] = e.latlng;
@@ -377,9 +410,6 @@
 			}
 			
 			//MOSTRA LINHAS ENTRE PARTIDA E CHEGADA
-			var pontosDePartida = [];
-			var pontosDeDestino = [];
-			var linhasCorretas = [];
 			var switchPartida = 0;
 			var switchChegada = 0;
 			//var e = document.getElementById("ddlViewBy");	
@@ -407,44 +437,13 @@
 
 				switchChegada = 1;
 
-				pontosDeDestino = [];
-				linhasCorretas = [];
-
-				for (i=0; i<pontosOnRadius.length; i++){
-					pontosDeDestino[i]=pontosOnRadius[i];
-				}
-				console.log(pontosDeDestino);
-				for (i=0; i<pontosDePartida.length; i++){
-					for (j=0; j<pontosDeDestino.length; j++){
-						for (k=0; k<pontosDePartida[i].properties.linhas.length; k++){
-							for (l=0; l<pontosDeDestino[j].properties.linhas.length; l++){
-								var linhaAAdicionar;
-								if (pontosDePartida[i].properties.linhas[k]==pontosDeDestino[j].properties.linhas[l]){
-									linhaAAdicionar = pontosDePartida[i].properties.linhas[k];
-									console.log(linhaAAdicionar);
-								}
-								var jaContem = 0;
-								for (m=0; m<linhasCorretas.length; m++){
-									if (linhaAAdicionar == linhasCorretas[m]){
-										jaContem = 1;
-									}
-								}
-								if(jaContem == 0 && linhaAAdicionar){
-									linhasCorretas.push(linhaAAdicionar);
-								}
-							}
-						}
-					}
-				}
-
 				var select = document.getElementById('linhasCorretas');
-				console.log(linhasCorretas);
-				for (var i = 0; i < linhasCorretas.length; i++){
+				console.log(linhasRota);
+				for (var i = 0; i < linhasRota.length; i++){
 					var opt = document.createElement('option');
-					opt.value = linhasCorretas[i];
-					opt.innerHTML = linhasCorretas[i];
-					select.appendChild(opt);
-				}
+					opt.value = linhasRota[i];
+					opt.innerHTML = linhasRota[i];
+					select.appendChild(opt);}
 
 				mymap.flyToBounds(limite);
 			}
